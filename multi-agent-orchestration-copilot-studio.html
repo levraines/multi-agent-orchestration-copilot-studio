@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multi-agent orchestration in Microsoft Copilot Studio</title>
+  <link rel="icon" href="data:," />
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+    }
+    a { color: var(--cp-link); }
+    button, input, select {
+      font: inherit;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px;
+      border-right: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .brand {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ms-logo {
+      display: grid;
+      grid-template-columns: repeat(2, 12px);
+      grid-template-rows: repeat(2, 12px);
+      gap: 2px;
+      width: 26px;
+      height: 26px;
+      flex: 0 0 auto;
+    }
+    .ms-logo span {
+      background: var(--cp-accent);
+      border: 1px solid var(--cp-border);
+    }
+    .brand h1 {
+      font-size: 20px;
+      line-height: 1.15;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .brand p {
+      margin: 0;
+      color: var(--cp-text-muted);
+      font-size: 13px;
+    }
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+    .nav button {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      cursor: pointer;
+    }
+    .nav button.active {
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      border-color: var(--cp-accent);
+    }
+    .main {
+      padding: 28px;
+      max-width: 1320px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .hero {
+      background: var(--cp-panel-strong);
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+      overflow: hidden;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--cp-accent-soft);
+      color: var(--cp-accent);
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .hero h2 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 60px);
+      line-height: 1;
+      letter-spacing: -0.05em;
+      max-width: 980px;
+    }
+    .hero p {
+      max-width: 920px;
+      color: var(--cp-text-muted);
+      font-size: 18px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .btn {
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      padding: 10px 14px;
+      border-radius: 0.625rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn.primary {
+      background: var(--cp-accent);
+      border-color: var(--cp-accent);
+      color: var(--cp-accent-fg);
+    }
+    .btn:hover { border-color: var(--cp-border-strong); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .card {
+      grid-column: span 4;
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+    }
+    .card.wide { grid-column: span 8; }
+    .card.full { grid-column: 1 / -1; }
+    .card.half { grid-column: span 6; }
+    .card h3, .card h4 {
+      margin-top: 0;
+      letter-spacing: -0.02em;
+    }
+    .muted { color: var(--cp-text-muted); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--cp-accent-soft);
+      color: var(--cp-accent);
+      font-size: 12px;
+      font-weight: 700;
+      margin: 2px;
+    }
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .logo-card {
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+      padding: 14px;
+      min-height: 128px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+    }
+    .logo-mark {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      padding: 6px;
+    }
+    .text-logo {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      background: var(--cp-surface);
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      color: var(--cp-accent);
+      font-weight: 800;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .diagram {
+      position: relative;
+      min-height: 560px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-bg-elevated);
+      overflow: hidden;
+      padding: 18px;
+    }
+    .node {
+      position: absolute;
+      width: 172px;
+      min-height: 92px;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-panel-strong);
+      box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease;
+    }
+    .node:hover, .node.selected {
+      transform: translateY(-2px);
+      border-color: var(--cp-accent);
+    }
+    .node strong { display: block; }
+    .node small { color: var(--cp-text-muted); }
+    .node.center {
+      left: calc(50% - 94px);
+      top: 214px;
+      width: 188px;
+      min-height: 116px;
+      border-color: var(--cp-accent);
+    }
+    .n-user { left: 4%; top: 40px; }
+    .n-m365 { right: 4%; top: 40px; }
+    .n-foundry { left: 10%; top: 220px; }
+    .n-fabric { right: 10%; top: 220px; }
+    .n-mcp { left: 6%; bottom: 40px; }
+    .n-a2a { left: calc(50% - 86px); bottom: 34px; }
+    .n-databricks { right: 6%; bottom: 40px; }
+    .connector {
+      position: absolute;
+      height: 1px;
+      background: var(--cp-border-strong);
+      transform-origin: left center;
+      opacity: 0.75;
+    }
+    .c1 { left: 180px; top: 170px; width: 330px; transform: rotate(20deg); }
+    .c2 { right: 180px; top: 170px; width: 330px; transform: rotate(160deg); }
+    .c3 { left: 260px; top: 300px; width: 250px; transform: rotate(-8deg); }
+    .c4 { right: 260px; top: 300px; width: 250px; transform: rotate(188deg); }
+    .c5 { left: 224px; bottom: 128px; width: 300px; transform: rotate(-20deg); }
+    .c6 { right: 224px; bottom: 128px; width: 300px; transform: rotate(200deg); }
+    .drawer {
+      margin-top: 16px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      padding: 16px;
+      background: var(--cp-surface);
+    }
+    .steps {
+      display: grid;
+      gap: 12px;
+      counter-reset: step;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--cp-surface);
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      font-weight: 800;
+    }
+    .accordion details {
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .accordion summary {
+      cursor: pointer;
+      font-weight: 750;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px;
+      border-bottom: 1px solid var(--cp-border);
+    }
+    th {
+      background: var(--cp-surface-soft);
+    }
+    tr:last-child td { border-bottom: 0; }
+    .scenario-picker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .scenario-picker button {
+      padding: 8px 10px;
+      border-radius: 0.625rem;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      cursor: pointer;
+    }
+    .scenario-picker button.active {
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      border-color: var(--cp-accent);
+    }
+    .cost-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface-soft);
+    }
+    .field label {
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .field input {
+      width: 100%;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      padding: 9px;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+    }
+    .total {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-accent-soft);
+    }
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+    .quiz {
+      display: grid;
+      gap: 10px;
+    }
+    .quiz button {
+      text-align: left;
+      padding: 12px;
+      border-radius: 0.625rem;
+      border: 1px solid var(--cp-border);
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      cursor: pointer;
+    }
+    .quiz button.correct {
+      border-color: var(--cp-success);
+    }
+    .quiz button.wrong {
+      border-color: var(--cp-danger);
+    }
+    .callout {
+      border: 1px solid var(--cp-border);
+      border-left: 4px solid var(--cp-accent);
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--cp-surface);
+      margin: 12px 0;
+    }
+    .code {
+      font-family: Consolas, "Courier New", Courier, monospace;
+      background: var(--cp-surface-soft);
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      padding: 10px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .source-list {
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--cp-border);
+      }
+      .nav { grid-template-columns: repeat(2, 1fr); }
+      .card, .card.wide, .card.half { grid-column: 1 / -1; }
+      .logo-grid, .cost-grid, .total { grid-template-columns: 1fr; }
+      .diagram { min-height: auto; display: grid; gap: 10px; }
+      .node { position: static; width: auto; }
+      .connector { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-row">
+          <div class="ms-logo" aria-label="Microsoft logo mark">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div>
+            <h1>Copilot Studio orchestration</h1>
+            <p>Interactive guide for multi-agent architectures</p>
+          </div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Guide sections">
+        <button class="active" data-tab="overview">Overview</button>
+        <button data-tab="architecture">Architecture map</button>
+        <button data-tab="connectors">Connections</button>
+        <button data-tab="examples">Examples</button>
+        <button data-tab="pricing">Pricing model</button>
+        <button data-tab="limits">Limits</button>
+        <button data-tab="calculator">Cost calculator</button>
+        <button data-tab="quiz">Readiness quiz</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <span class="eyebrow">Microsoft Copilot Studio + multi-agent orchestration</span>
+        <h2>One conversational front door can coordinate many specialized agents, tools, data platforms, and protocols.</h2>
+        <p>
+          Multi-agent orchestration is the pattern where Copilot Studio receives a user goal,
+          decomposes it into tasks, chooses the right agent or system for each task, applies security
+          and governance, and returns a single grounded answer or completed workflow.
+        </p>
+        <div class="hero-actions">
+          <button class="btn primary" data-jump="architecture">Explore the architecture</button>
+          <button class="btn" data-jump="calculator">Estimate monthly cost</button>
+          <button class="btn" data-jump="limits">Review practical limits</button>
+        </div>
+        <div class="logo-grid" aria-label="Official platform logo and icon references">
+          <div class="logo-card">
+            <img class="logo-mark" src="CopilotStudio_scalable.svg" alt="Microsoft Copilot Studio official icon" />
+            <strong>Copilot Studio</strong>
+            <span class="muted">Official Power Platform icon package.</span>
+          </div>
+          <div class="logo-card">
+            <div class="text-logo">F</div>
+            <strong>Microsoft Foundry</strong>
+            <span class="muted">Official Azure architecture icon collection includes Foundry.</span>
+          </div>
+          <div class="logo-card">
+            <div class="text-logo">Fa</div>
+            <strong>Microsoft Fabric</strong>
+            <span class="muted">Official Fabric icon collection and npm package.</span>
+          </div>
+          <div class="logo-card">
+            <div class="text-logo">DB</div>
+            <strong>Azure Databricks</strong>
+            <span class="muted">Azure pricing and architecture references.</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="overview" class="tab-panel active">
+        <div class="grid">
+          <article class="card full">
+            <h3>What multi-agent orchestration means in Copilot Studio</h3>
+            <p>
+              In a single-agent design, one agent owns the entire conversation and every action. In a
+              multi-agent design, Copilot Studio acts as the governed entry point and coordinator: it
+              decides whether the request should be answered by its own topics, a custom action, a
+              Foundry-hosted agent, a Fabric data agent, a Databricks intelligence workflow, an MCP
+              server, or an external A2A-compatible agent.
+            </p>
+            <div>
+              <span class="tag">Intent routing</span>
+              <span class="tag">Agent delegation</span>
+              <span class="tag">Tool calling</span>
+              <span class="tag">Grounding</span>
+              <span class="tag">Human handoff</span>
+              <span class="tag">Governance</span>
+              <span class="tag">Cost controls</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>1. Plan</h3>
+            <p class="muted">The orchestrator interprets the user's goal, extracts entities, checks policy, and decides what work must happen.</p>
+          </article>
+          <article class="card">
+            <h3>2. Delegate</h3>
+            <p class="muted">It calls the right agent, connector, flow, MCP server, Fabric item, Foundry endpoint, Databricks job, or API.</p>
+          </article>
+          <article class="card">
+            <h3>3. Synthesize</h3>
+            <p class="muted">It merges results, cites or explains source systems, handles failures, and gives a single answer or action result.</p>
+          </article>
+
+          <article class="card wide">
+            <h3>Why Copilot Studio is the orchestration layer</h3>
+            <div class="steps">
+              <div class="step"><div><strong>Business-friendly authoring.</strong><br><span class="muted">Makers can create topics, generative answers, agent instructions, actions, and workflows without building a full custom app.</span></div></div>
+              <div class="step"><div><strong>Channel reach.</strong><br><span class="muted">Agents can be published to Microsoft 365 Copilot, Teams, websites, and other channels depending on configuration and licensing.</span></div></div>
+              <div class="step"><div><strong>Enterprise controls.</strong><br><span class="muted">The pattern uses Microsoft identity, environment governance, DLP policies, connectors, auditability, and admin controls.</span></div></div>
+              <div class="step"><div><strong>Extensible tool surface.</strong><br><span class="muted">Copilot Studio can connect to Microsoft services, custom APIs, Power Automate, Foundry agents, Fabric experiences, Databricks workloads, MCP tools, and A2A-style agent endpoints.</span></div></div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>Key design rule</h3>
+            <p>
+              Keep Copilot Studio responsible for user experience, routing, guardrails, and response
+              composition. Keep specialized agents responsible for domain work: analytics, data science,
+              knowledge retrieval, claims processing, SAP actions, customer service resolution, or code
+              analysis.
+            </p>
+            <div class="callout">
+              <strong>Practical pattern:</strong> one orchestrator, many specialists, explicit contracts,
+              measurable cost, and a fallback path when a specialist cannot complete the task.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>Clickable orchestration map</h3>
+            <p class="muted">Select any node to see what it contributes, how it is paid for, and what commonly limits it.</p>
+            <div class="diagram">
+              <div class="connector c1"></div><div class="connector c2"></div><div class="connector c3"></div>
+              <div class="connector c4"></div><div class="connector c5"></div><div class="connector c6"></div>
+              <button class="node n-user" data-node="user"><strong>User or channel</strong><small>Teams, M365 Copilot, web, service desk</small></button>
+              <button class="node n-m365" data-node="m365"><strong>Microsoft 365 context</strong><small>Files, meetings, chats, mail, SharePoint</small></button>
+              <button class="node center selected" data-node="copilot"><strong>Copilot Studio</strong><small>Orchestrator, routing, actions, answers</small></button>
+              <button class="node n-foundry" data-node="foundry"><strong>Foundry agent</strong><small>Model routing, custom agent logic, RAG</small></button>
+              <button class="node n-fabric" data-node="fabric"><strong>Fabric data agent</strong><small>OneLake, semantic models, notebooks, warehouses</small></button>
+              <button class="node n-mcp" data-node="mcp"><strong>MCP servers</strong><small>Tool protocol for APIs, systems, files</small></button>
+              <button class="node n-a2a" data-node="a2a"><strong>A2A protocol</strong><small>Agent-to-agent handoff and collaboration</small></button>
+              <button class="node n-databricks" data-node="databricks"><strong>Databricks agent</strong><small>Lakehouse AI, jobs, ML, Spark, SQL</small></button>
+            </div>
+            <div class="drawer" id="nodeDrawer"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="connectors" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>How the orchestration connects to Foundry, Fabric, A2A, MCP, and Databricks</h3>
+            <table>
+              <thead><tr><th>Connection</th><th>What Copilot Studio delegates</th><th>What comes back</th><th>Typical billing owner</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>Microsoft Foundry</strong></td>
+                  <td>Specialized agent reasoning, custom model calls, agent tools, grounding, evaluation, safety checks.</td>
+                  <td>Structured response, citations, action result, or next-step recommendation.</td>
+                  <td>Foundry itself is free to explore; consumed models, Search, Content Safety, tools, hosting, and related Azure resources bill separately.</td>
+                </tr>
+                <tr>
+                  <td><strong>Microsoft Fabric</strong></td>
+                  <td>Data questions, semantic model queries, lakehouse/warehouse lookups, notebooks, data pipelines, Power BI insights.</td>
+                  <td>Aggregated metrics, explanations, tables, recommended visualizations, or data quality findings.</td>
+                  <td>Fabric capacity, OneLake storage, optional Spark autoscale, SQL storage, and overage where enabled.</td>
+                </tr>
+                <tr>
+                  <td><strong>MCP</strong></td>
+                  <td>Calls to external tools through a standardized Model Context Protocol server.</td>
+                  <td>Tool results such as records, tickets, code search results, documents, or transaction status.</td>
+                  <td>No protocol license by itself; pay for MCP host compute, network, and every backend system or API invoked.</td>
+                </tr>
+                <tr>
+                  <td><strong>A2A protocol</strong></td>
+                  <td>Delegation to another agent that owns a domain, task, or workflow.</td>
+                  <td>Agent response, task state, handoff payload, or completed work package.</td>
+                  <td>No universal protocol meter; pay for each participating agent platform, model usage, compute, and downstream service.</td>
+                </tr>
+                <tr>
+                  <td><strong>Azure Databricks</strong></td>
+                  <td>Data engineering, feature computation, SQL analytics, ML inference, model evaluation, lakehouse operations.</td>
+                  <td>Predictions, enriched datasets, job status, SQL result, anomaly explanation, or notebook output.</td>
+                  <td>Databricks DBUs plus Azure VM/serverless compute, storage, networking, and optional enhanced security add-on.</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card half">
+            <h3>Recommended contract between agents</h3>
+            <div class="code">{
+  "task": "Analyze customer churn risk",
+  "inputs": { "customerId": "C-1042", "period": "last_90_days" },
+  "constraints": ["no raw PII in final answer", "cite source systems"],
+  "expectedOutput": "risk_score, top_drivers, next_best_action",
+  "timeoutSeconds": 60,
+  "costBudget": "team-defined"
+}</div>
+          </article>
+          <article class="card half">
+            <h3>Governance checkpoints</h3>
+            <div class="accordion">
+              <details open><summary>Identity</summary><p class="muted">Use Entra ID, managed identities, scoped app registrations, and least privilege permissions for every delegated call.</p></details>
+              <details><summary>Data loss prevention</summary><p class="muted">Apply Power Platform DLP policies, connector classification, environment strategy, and tenant restrictions.</p></details>
+              <details><summary>Observability</summary><p class="muted">Log routing decisions, agent calls, correlation IDs, errors, latency, cost signals, and fallback outcomes.</p></details>
+              <details><summary>Human control</summary><p class="muted">Require confirmation for high-impact actions such as refunds, data writes, approvals, customer notifications, or production changes.</p></details>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="examples" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>Interactive scenario walkthroughs</h3>
+            <div class="scenario-picker">
+              <button class="active" data-scenario="databricks">Databricks revenue-risk analyst</button>
+              <button data-scenario="fabric">Fabric executive insights</button>
+              <button data-scenario="foundry">Foundry claims specialist</button>
+              <button data-scenario="mcp">MCP service-desk tools</button>
+              <button data-scenario="a2a">A2A partner agent</button>
+            </div>
+            <div id="scenarioOutput"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="pricing" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>What the customer pays for</h3>
+            <p>
+              The orchestrator does not make every connected product free. A customer normally pays for
+              Copilot Studio usage plus the usage of each connected product or backend that does work.
+              Treat the final bill as a stack: orchestration + model calls + data platform + tool hosting
+              + downstream systems + storage/networking.
+            </p>
+            <table>
+              <thead><tr><th>Product or protocol</th><th>Pricing basis</th><th>Current public detail captured for this guide</th><th>Cost-control lever</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>Copilot Studio</strong></td>
+                  <td>Copilot Credits or pay-as-you-go meter.</td>
+                  <td>Public Microsoft page states tenant-wide packs of 25,000 Copilot Credits are priced at $200 per pack per month. Pay-as-you-go requires an Azure subscription and bills consumed credits after use. Agents published to Microsoft 365 Copilot can be included for licensed Microsoft 365 Copilot users, depending on terms.</td>
+                  <td>Reduce unnecessary turns, cache common answers, route only complex work to expensive specialists, and track credit consumption per topic/action.</td>
+                </tr>
+                <tr>
+                  <td><strong>Microsoft Foundry</strong></td>
+                  <td>Per consumed service: models, Agent Service, Search/Foundry IQ, tools, Content Safety, Azure ML, hosting, storage.</td>
+                  <td>Microsoft pricing page says the Foundry platform is free to use and explore, but individual features and products bill at their normal rates.</td>
+                  <td>Choose right-size models, use model routing, limit context size, cache retrieval, and cap tool calls per request.</td>
+                </tr>
+                <tr>
+                  <td><strong>Microsoft Fabric</strong></td>
+                  <td>Capacity Units, storage, optional Spark autoscale, overage, reservations.</td>
+                  <td>Fabric uses capacity SKUs from F2 through F2048 and a shared pool of CUs. Reservations can save about 41% compared with pay-as-you-go. OneLake and SQL storage are separate items.</td>
+                  <td>Pause PAYG capacity when idle, use reservations for steady workloads, monitor CU consumption, and set overage limits.</td>
+                </tr>
+                <tr>
+                  <td><strong>Azure Databricks</strong></td>
+                  <td>DBUs plus Azure compute and other resources, by workload/tier/region.</td>
+                  <td>Azure Databricks bills compute capacity by the second. Enhanced Security and Compliance add-on is listed as 10% of list price added to Azure Databricks product spend in the selected workspace.</td>
+                  <td>Use jobs/serverless appropriately, cluster policies, autoscaling, spot where suitable, and terminate idle clusters.</td>
+                </tr>
+                <tr>
+                  <td><strong>MCP</strong></td>
+                  <td>Protocol has no universal Microsoft meter by itself.</td>
+                  <td>Costs come from hosting the MCP server and from each API, model, database, SaaS app, or cloud service that the MCP server invokes.</td>
+                  <td>Whitelist tools, set per-tool budgets, add rate limits, cache reads, and separate read-only from write actions.</td>
+                </tr>
+                <tr>
+                  <td><strong>A2A</strong></td>
+                  <td>Protocol has no universal Microsoft meter by itself.</td>
+                  <td>Costs come from participating agent platforms, model tokens, infrastructure, and downstream systems used during the agent-to-agent workflow.</td>
+                  <td>Use explicit task contracts, budget fields, retry limits, timeout limits, and escalation rules.</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout">
+              <strong>Important:</strong> Prices vary by region, agreement, currency, SKU, model, and date. Use the calculator in this artifact as a planning model, not a binding quote.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="limits" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>Does orchestration have a limit?</h3>
+            <p>
+              There is not one universal "multi-agent orchestration limit." The effective limit is the
+              tightest constraint across the channel, Copilot Studio environment, model, connector,
+              protocol server, data platform, and downstream API.
+            </p>
+          </article>
+          <article class="card half">
+            <h3>Common technical limits</h3>
+            <div class="accordion">
+              <details open><summary>Conversation and action limits</summary><p class="muted">Copilot Studio topics, generative answers, actions, channels, and environment settings can have service limits and quotas that change over time.</p></details>
+              <details><summary>Connector throttling</summary><p class="muted">Power Platform connectors, custom APIs, SaaS systems, and databases can throttle calls, reject bursts, or impose concurrency limits.</p></details>
+              <details><summary>Model context windows</summary><p class="muted">Foundry or other model calls are constrained by context size, token throughput, model rate limits, and content safety policies.</p></details>
+              <details><summary>Data capacity</summary><p class="muted">Fabric workloads can be constrained by capacity saturation, CU limits, Spark autoscale settings, OneLake storage, or overage controls.</p></details>
+              <details><summary>Databricks concurrency</summary><p class="muted">Cluster size, serverless availability, jobs concurrency, SQL warehouse size, workspace quotas, and cloud capacity can affect response time.</p></details>
+              <details><summary>Protocol server capacity</summary><p class="muted">MCP and A2A endpoints need their own authentication, timeout, payload, concurrency, and retry controls.</p></details>
+            </div>
+          </article>
+          <article class="card half">
+            <h3>Recommended guardrails</h3>
+            <div class="steps">
+              <div class="step"><div><strong>Budget per request.</strong><br><span class="muted">Set max turns, max specialist calls, max tokens, and max backend transactions.</span></div></div>
+              <div class="step"><div><strong>Timeout per specialist.</strong><br><span class="muted">Fail fast and summarize partial progress when a connected agent or platform is slow.</span></div></div>
+              <div class="step"><div><strong>Approval for writes.</strong><br><span class="muted">Require user or operator confirmation before making irreversible changes.</span></div></div>
+              <div class="step"><div><strong>Observability.</strong><br><span class="muted">Track correlation IDs across Copilot Studio, Foundry, Fabric, Databricks, MCP, A2A, and APIs.</span></div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="calculator" class="tab-panel">
+        <div class="grid">
+          <article class="card full">
+            <h3>Configurable monthly cost calculator</h3>
+            <p class="muted">
+              Adjust assumptions to estimate the total orchestration stack. Defaults are placeholders except the Copilot Studio pack price shown on Microsoft's public pricing page.
+            </p>
+            <div class="cost-grid">
+              <div class="field"><label for="daily">Agent requests per day</label><input id="daily" type="number" min="0" value="1000"></div>
+              <div class="field"><label for="days">Days per month</label><input id="days" type="number" min="1" value="30"></div>
+              <div class="field"><label for="credits">Avg Copilot Credits per request</label><input id="credits" type="number" min="0" step="0.1" value="1"></div>
+              <div class="field"><label for="packPrice">Copilot Studio pack price</label><input id="packPrice" type="number" min="0" value="200"></div>
+              <div class="field"><label for="packCredits">Credits per pack</label><input id="packCredits" type="number" min="1" value="25000"></div>
+              <div class="field"><label for="foundry">Foundry/model/tool cost per request</label><input id="foundry" type="number" min="0" step="0.0001" value="0.0000"></div>
+              <div class="field"><label for="fabricCu">Fabric CU-hours per month</label><input id="fabricCu" type="number" min="0" step="0.1" value="0"></div>
+              <div class="field"><label for="fabricRate">Fabric price per CU-hour</label><input id="fabricRate" type="number" min="0" step="0.0001" value="0"></div>
+              <div class="field"><label for="databricksHours">Databricks active hours per month</label><input id="databricksHours" type="number" min="0" step="0.1" value="0"></div>
+              <div class="field"><label for="databricksRate">Databricks DBU + VM hourly cost</label><input id="databricksRate" type="number" min="0" step="0.0001" value="0"></div>
+              <div class="field"><label for="securityAddOn">Databricks enhanced security add-on %</label><input id="securityAddOn" type="number" min="0" step="0.1" value="0"></div>
+              <div class="field"><label for="mcpHosting">MCP/A2A/API hosting monthly cost</label><input id="mcpHosting" type="number" min="0" step="0.01" value="0"></div>
+            </div>
+            <div class="total">
+              <div class="metric"><span class="muted">Monthly requests</span><strong id="mReq">0</strong></div>
+              <div class="metric"><span class="muted">Copilot credits</span><strong id="mCredits">0</strong></div>
+              <div class="metric"><span class="muted">Packs needed</span><strong id="mPacks">0</strong></div>
+              <div class="metric"><span class="muted">Estimated total</span><strong id="mTotal">$0</strong></div>
+            </div>
+            <div class="drawer" id="costBreakdown"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="quiz" class="tab-panel">
+        <div class="grid">
+          <article class="card half">
+            <h3>Quick readiness quiz</h3>
+            <p class="muted">Click the best answer.</p>
+            <div class="quiz" id="quizBox"></div>
+          </article>
+          <article class="card half">
+            <h3>Official sources used</h3>
+            <div class="source-list">
+              <a href="https://www.microsoft.com/en-us/microsoft-copilot/microsoft-copilot-studio#Pricing" target="_blank" rel="noreferrer">Copilot Studio pricing page</a>
+              <a href="https://azure.microsoft.com/en-us/pricing/details/ai-foundry/" target="_blank" rel="noreferrer">Microsoft Foundry pricing page</a>
+              <a href="https://azure.microsoft.com/en-us/pricing/details/microsoft-fabric/" target="_blank" rel="noreferrer">Microsoft Fabric pricing page</a>
+              <a href="https://azure.microsoft.com/en-us/pricing/details/databricks/" target="_blank" rel="noreferrer">Azure Databricks pricing page</a>
+              <a href="https://learn.microsoft.com/en-us/power-platform/guidance/icons" target="_blank" rel="noreferrer">Official Power Platform and Copilot Studio icons</a>
+              <a href="https://learn.microsoft.com/en-us/azure/architecture/icons/" target="_blank" rel="noreferrer">Official Azure architecture icons</a>
+              <a href="https://learn.microsoft.com/en-us/fabric/fundamentals/icons" target="_blank" rel="noreferrer">Official Microsoft Fabric icons</a>
+            </div>
+            <div class="callout">
+              Logo/icon use should follow the Microsoft icon terms: use icons to illustrate products working together, label them, and do not crop, distort, rotate, or use them to represent your own product.
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const nodeInfo = {
+      user: ["User or channel", "The request can originate from Teams, Microsoft 365 Copilot, a website, a service desk, or an embedded app. Channel policies, authentication, and UX shape what the orchestrator can safely do."],
+      m365: ["Microsoft 365 context", "Copilot Studio can be published into Microsoft 365 experiences and can use Microsoft 365 context depending on configuration, permissions, and licensing. This is where business context often enters the workflow."],
+      copilot: ["Copilot Studio", "The orchestration hub: routes intent, invokes actions, coordinates agents, applies guardrails, manages conversation state, and returns one response. Billing is commonly through Copilot Credits or pay-as-you-go credits."],
+      foundry: ["Microsoft Foundry", "Best for custom AI agents, model choice, evaluations, grounding with Foundry IQ/Azure AI Search, and model/tool governance. The portal is free to explore; consumed services bill separately."],
+      fabric: ["Microsoft Fabric", "Best for enterprise data, OneLake, semantic models, lakehouses, warehouses, notebooks, data pipelines, and BI insights. Billing is capacity/storage/overage based."],
+      mcp: ["MCP servers", "A standardized way to expose tools to agents. Useful for internal systems, custom APIs, knowledge stores, and operational tools. The protocol itself is not the bill; hosting and backend calls are."],
+      a2a: ["A2A protocol", "A pattern for delegating to another agent. Useful when another domain agent owns the task. Cost depends on every participating agent, model, and backend system."],
+      databricks: ["Azure Databricks", "Best for Spark, SQL analytics, ML, feature engineering, batch jobs, and lakehouse AI. Billing includes DBUs and Azure compute, plus optional security/compliance add-ons."]
+    };
+
+    const scenarios = {
+      databricks: {
+        title: "Databricks revenue-risk analyst",
+        steps: [
+          "A seller asks Copilot Studio: Which enterprise renewals are at risk this quarter and what should I do?",
+          "Copilot Studio validates the seller's identity and routes the analytics portion to a Databricks specialist agent.",
+          "The Databricks agent runs a governed SQL/ML workflow over customer usage, support, and product telemetry.",
+          "A Foundry model summarizes drivers and generates next-best-action recommendations.",
+          "Copilot Studio returns a ranked list, explains confidence, and offers to create follow-up tasks in CRM."
+        ],
+        pays: "Copilot Studio credits + Foundry model/tool usage + Azure Databricks DBUs/compute + storage/networking + CRM/API usage."
+      },
+      fabric: {
+        title: "Fabric executive insights",
+        steps: [
+          "An executive asks for margin changes by region, product line, and customer segment.",
+          "Copilot Studio routes metric calculation to Fabric, using governed semantic models and OneLake data.",
+          "Fabric returns measures and slices; Copilot Studio asks a Foundry agent to summarize the business drivers.",
+          "The orchestrator provides an answer, references source datasets, and proposes a Power BI follow-up view."
+        ],
+        pays: "Copilot Studio credits + Fabric capacity/storage + optional Spark autoscale + any Foundry model calls."
+      },
+      foundry: {
+        title: "Foundry claims specialist",
+        steps: [
+          "A claims agent asks Copilot Studio to review a complex claim.",
+          "Copilot Studio delegates evidence extraction and policy reasoning to a Foundry-hosted specialist agent.",
+          "The Foundry agent calls retrieval, OCR, safety, and policy tools, then returns a structured recommendation.",
+          "Copilot Studio requires human approval before any customer-visible action is sent."
+        ],
+        pays: "Copilot Studio credits + Foundry consumed model/tool services + storage/search/OCR/content safety usage."
+      },
+      mcp: {
+        title: "MCP service-desk tools",
+        steps: [
+          "An employee asks for help with a device issue.",
+          "Copilot Studio calls an MCP server exposing device inventory, ticket search, warranty lookup, and diagnostic actions.",
+          "Read-only tools run automatically; write actions require confirmation.",
+          "Copilot Studio creates a ticket and summarizes next steps."
+        ],
+        pays: "Copilot Studio credits + MCP server hosting + ticketing/device API costs + any model calls."
+      },
+      a2a: {
+        title: "A2A partner agent",
+        steps: [
+          "A procurement user asks whether a supplier delay affects launch readiness.",
+          "Copilot Studio delegates supplier-specific details to a partner's agent using an A2A-style contract.",
+          "The partner agent returns status, constraints, and confidence without exposing unrelated data.",
+          "Copilot Studio combines partner status with internal Fabric forecasts and recommends mitigation."
+        ],
+        pays: "Copilot Studio credits + partner agent/platform cost + Fabric/Foundry usage + API/networking charges."
+      }
+    };
+
+    const quiz = {
+      question: "A Copilot Studio agent calls Fabric, Foundry, Databricks, and an MCP server. What should the customer budget for?",
+      answers: [
+        ["Only Copilot Studio, because it orchestrates everything.", false],
+        ["Copilot Studio plus each connected product, model, backend service, storage, network, and hosting component that does work.", true],
+        ["Only the most expensive connected product.", false],
+        ["Only MCP and A2A protocol fees.", false]
+      ]
+    };
+
+    function setTab(tab) {
+      document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === tab));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.querySelectorAll(".nav button").forEach(btn => {
+      btn.addEventListener("click", () => setTab(btn.dataset.tab));
+    });
+    document.querySelectorAll("[data-jump]").forEach(btn => {
+      btn.addEventListener("click", () => setTab(btn.dataset.jump));
+    });
+
+    function renderNode(key) {
+      const [title, body] = nodeInfo[key];
+      document.getElementById("nodeDrawer").innerHTML = `<h3>${title}</h3><p>${body}</p>`;
+      document.querySelectorAll(".node").forEach(n => n.classList.toggle("selected", n.dataset.node === key));
+    }
+    document.querySelectorAll(".node").forEach(node => {
+      node.addEventListener("click", () => renderNode(node.dataset.node));
+    });
+    renderNode("copilot");
+
+    function renderScenario(key) {
+      const s = scenarios[key];
+      document.getElementById("scenarioOutput").innerHTML = `
+        <h3>${s.title}</h3>
+        <div class="steps">${s.steps.map(step => `<div class="step"><div>${step}</div></div>`).join("")}</div>
+        <div class="callout"><strong>Customer pays for:</strong> ${s.pays}</div>
+      `;
+      document.querySelectorAll("[data-scenario]").forEach(b => b.classList.toggle("active", b.dataset.scenario === key));
+    }
+    document.querySelectorAll("[data-scenario]").forEach(btn => {
+      btn.addEventListener("click", () => renderScenario(btn.dataset.scenario));
+    });
+    renderScenario("databricks");
+
+    function money(n) {
+      return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+    }
+    function num(id) {
+      return Number(document.getElementById(id).value || 0);
+    }
+    function calculate() {
+      const requests = num("daily") * num("days");
+      const credits = requests * num("credits");
+      const packCredits = Math.max(1, num("packCredits"));
+      const packs = Math.ceil(credits / packCredits);
+      const copilot = packs * num("packPrice");
+      const foundry = requests * num("foundry");
+      const fabric = num("fabricCu") * num("fabricRate");
+      const databricksBase = num("databricksHours") * num("databricksRate");
+      const databricks = databricksBase * (1 + (num("securityAddOn") / 100));
+      const mcp = num("mcpHosting");
+      const total = copilot + foundry + fabric + databricks + mcp;
+      document.getElementById("mReq").textContent = requests.toLocaleString();
+      document.getElementById("mCredits").textContent = credits.toLocaleString();
+      document.getElementById("mPacks").textContent = packs.toLocaleString();
+      document.getElementById("mTotal").textContent = money(total);
+      document.getElementById("costBreakdown").innerHTML = `
+        <h3>Breakdown</h3>
+        <table>
+          <tbody>
+            <tr><td>Copilot Studio packs</td><td>${packs} x ${money(num("packPrice"))}</td><td>${money(copilot)}</td></tr>
+            <tr><td>Foundry/model/tool usage</td><td>${requests.toLocaleString()} requests x ${money(num("foundry"))}</td><td>${money(foundry)}</td></tr>
+            <tr><td>Fabric capacity</td><td>${num("fabricCu").toLocaleString()} CU-hours x ${money(num("fabricRate"))}</td><td>${money(fabric)}</td></tr>
+            <tr><td>Databricks</td><td>${num("databricksHours").toLocaleString()} hours x ${money(num("databricksRate"))}; add-on ${num("securityAddOn")}%</td><td>${money(databricks)}</td></tr>
+            <tr><td>MCP/A2A/API hosting</td><td>Monthly fixed estimate</td><td>${money(mcp)}</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+    document.querySelectorAll("#calculator input").forEach(input => input.addEventListener("input", calculate));
+    calculate();
+
+    function renderQuiz() {
+      const box = document.getElementById("quizBox");
+      box.innerHTML = `<strong>${quiz.question}</strong>` + quiz.answers.map((a, i) => `<button data-answer="${i}">${a[0]}</button>`).join("");
+      box.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const correct = quiz.answers[Number(btn.dataset.answer)][1];
+          btn.classList.add(correct ? "correct" : "wrong");
+          if (correct) {
+            btn.insertAdjacentHTML("afterend", `<div class="callout"><strong>Correct.</strong> Orchestration is a stack cost: the front-door agent plus every platform, model, tool, and backend it consumes.</div>`);
+          }
+        });
+      });
+    }
+    renderQuiz();
+  </script>
+</body>
+</html>
